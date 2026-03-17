@@ -28,16 +28,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-5. Run the FastAPI server.
-
+5. Run the program
 ```
-uvicorn app.main:app --reload
+python app/main.py
 ```
-
-6. Open the browser and go to:
-
-```
-http://127.0.0.1:8000/video
-```
-
-The webcam stream will start and the squat analyzer will run.
