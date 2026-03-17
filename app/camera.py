@@ -1,18 +1,23 @@
 import cv2
 
+
 class Camera:
 
-    def __init__(self):
-        self.cap = cv2.VideoCapture(0)
+    def __init__(self, index):
 
-        if not self.cap.isOpened():
-            raise RuntimeError("Cannot open camera")
+        self.cap = cv2.VideoCapture(index)
 
     def read(self):
 
-        success, frame = self.cap.read()
+        ret, frame = self.cap.read()
 
-        if not success:
-            return None
+        if not ret:
+            raise RuntimeError("Camera not accessible")
+
+        frame = cv2.flip(frame, 1)
 
         return frame
+
+    def release(self):
+
+        self.cap.release()

@@ -170,6 +170,4 @@ class PoseEngine:
                 lineType=cv2.LINE_AA
             )
 
-        return frame 
-    
-    
+        return frame

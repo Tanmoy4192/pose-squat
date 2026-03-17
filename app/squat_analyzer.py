@@ -1,71 +1,62 @@
-# #Squat Analyzer with Reference Pose Matching
-# 1. Initialize variables
+from pose_similarity import pose_similarity
+from utils import calculate_angle
+import math
 
-# rep_count = 0
-# stage = "UP"
 
-# 2. For every frame do
-# user_landmarks = get_pose_from_camera()
-# reference_landmarks = get_pose_from_reference_video()
+class WorkoutController:
 
-# 3. Get important joints from user pose
+    def __init__(self):
 
-# left_shoulder 
-# right_shoulder 
+        self.rep_count = 0
+        self.phase = "UP"
 
-# left_hip 
-# left_knee 
-# left_ankle 
-# right_ankle 
+        self.similarity_threshold = 0.84
 
-# 4. Get joints from reference pose
-# ref_hip 
-# ref_knee
-# ref_ankle 
+    def evaluate(self, user_lm, ref_lm, width, height):
 
-# 5. Calculate knee angle for user
-# knee_angle = angle(left_hip , left_knee , left_ankle)
+        if user_lm is None or ref_lm is None:
+            return False, "Detecting pose..."
 
-# 6. Calculate knee angle for reference
-# ref_knee_angle = angle(ref_hip , ref_knee , ref_ankle)
+        similarity = pose_similarity(user_lm, ref_lm)
 
-# 7. Check leg distance
-# shoulder_width = distance(left_shoulder , right_shoulder)
-# feet_width = distance(left_ankle , right_ankle)
-# ratio = feet_width / shoulder_width
+        if similarity < self.similarity_threshold:
+            return False, "Follow the mentor pose"
 
-# if ratio < 0.8 OR ratio > 1.2
-#     pose_correct = False
-#     feedback = "Keep legs shoulder width"
+        message = self.check_squat_pose(user_lm, width, height)
 
-# 8. Detect squat down position
-# if knee_angle < 100
-#     stage = "DOWN"
+        if message:
+            return False, message
 
-# 9. Detect squat up position
-# if knee_angle > 160 AND stage == "DOWN"
-#     rep_count = rep_count + 1
-#     stage = "UP"
+        self.detect_rep(user_lm, width, height)
 
-# 10. Compare user pose with reference pose
+        return True, "Good form"
 
-# angle_difference = abs(knee_angle - ref_knee_angle)
-# similarity_score = 1 / (1 + angle_difference)
+    def check_squat_pose(self, lm, width, height):
 
-# 11. Check similarity
-# if similarity_score < 0.8
-#     pose_correct = False
-#     feedback = "Follow the reference squat"
-#     play_reference_video = False
-# else
-#     play_reference_video = True
+        left_hip = (lm[23].x * width, lm[23].y * height)
+        left_knee = (lm[25].x * width, lm[25].y * height)
+        left_ankle = (lm[27].x * width, lm[27].y * height)
 
-# 12. Decide skeleton color
+        knee_angle = calculate_angle(left_hip, left_knee, left_ankle)
 
-# if pose_correct == True
-#     skeleton_color = WHITE
-# else
-#     skeleton_color = RED
+        if knee_angle > 120:
+            return "Go lower into squat"
 
-# 13. Return results
-# return rep_count, knee_angle
+        return None
+
+    def detect_rep(self, lm, width, height):
+
+        left_hip = (lm[23].x * width, lm[23].y * height)
+        left_knee = (lm[25].x * width, lm[25].y * height)
+        left_ankle = (lm[27].x * width, lm[27].y * height)
+
+        knee_angle = calculate_angle(left_hip, left_knee, left_ankle)
+
+        squatting = knee_angle < 100
+
+        if squatting and self.phase == "UP":
+            self.phase = "DOWN"
+
+        if not squatting and self.phase == "DOWN":
+            self.phase = "UP"
+            self.rep_count += 1
