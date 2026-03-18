@@ -1,29 +1,37 @@
-import mediapipe as mp
 import cv2
-import time
+import mediapipe as mp
+
+from pose_engine import ImagePoseEngine
 
 
 class ReferenceAnalyzer:
-
-    def __init__(self, pose_engine):
-
-        self.pose_engine = pose_engine
-        self.reference_landmarks = None
+    """
+    Extracts pose landmarks from reference video frames using the synchronous ImagePoseEngine (RunningMode.IMAGE).
+    """
+    def __init__(self, model_path: str):
+        # Guard against accidentally passing a PoseEngine object instead
+        # of a path string (a common mistake when refactoring from the old API).
+        if not isinstance(model_path, str):
+            raise TypeError(
+                f"ReferenceAnalyzer expects a model file path (str), "
+                f"but received {type(model_path).__name__}. "
+                f"Pass the path string directly, e.g. "
+                f"ReferenceAnalyzer('models/pose_landmarker_full.task')"
+            )
+        self._engine = ImagePoseEngine(model_path)
+        self._last_landmarks = None          # cache of last successful detection
 
     def extract(self, frame):
-
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
         mp_image = mp.Image(
             image_format=mp.ImageFormat.SRGB,
-            data=rgb
+            data=rgb,
         )
 
-        timestamp = int(time.time() * 1000)
+        landmarks = self._engine.detect(mp_image)
 
-        self.pose_engine.detect_async(mp_image, timestamp)
+        if landmarks is not None:
+            self._last_landmarks = landmarks   # update cache on success
+        # else: keep _last_landmarks as-is (stale-frame fallback)
 
-        if self.pose_engine.latest_result and self.pose_engine.latest_result.pose_landmarks:
-            self.reference_landmarks = self.pose_engine.latest_result.pose_landmarks[0]
-
-        return self.reference_landmarks
+        return self._last_landmarks
