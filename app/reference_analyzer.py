@@ -32,6 +32,6 @@ class ReferenceAnalyzer:
 
         if landmarks is not None:
             self._last_landmarks = landmarks   # update cache on success
-        # else: keep _last_landmarks as-is (stale-frame fallback)
-
+        # else: keep _last_landmarks as-is 
+        
         return self._last_landmarks
