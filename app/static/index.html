@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Squat Trainer</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: white;
+      font-family: sans-serif;
+      gap: 16px;
+    }
+    h1 { font-size: 22px; margin: 0; }
+    #output {
+      width: 90%;
+      max-width: 1200px;
+      border-radius: 8px;
+      background: #222;
+      min-height: 300px;
+    }
+    p { color: #aaa; font-size: 14px; margin: 0; }
+
+    /* Hidden — just used to grab webcam frames */
+    #webcam { display: none; }
+    #canvas { display: none; }
+  </style>
+</head>
+<body>
+  <h1>AI Squat Trainer</h1>
+  <p>Stand back so your full body is visible. Follow the mentor on the right.</p>
+
+  <!-- Hidden webcam + canvas to capture frames -->
+  <video id="webcam" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
+
+  <!-- This shows the processed result from backend -->
+  <img id="output" alt="Waiting for camera..." />
+
+  <script>
+    const webcam  = document.getElementById('webcam');
+    const canvas  = document.getElementById('canvas');
+    const output  = document.getElementById('output');
+    const ctx     = canvas.getContext('2d');
+
+    // Step 1 — ask browser for webcam access
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        webcam.srcObject = stream;
+        webcam.onloadedmetadata = () => {
+          canvas.width  = webcam.videoWidth;
+          canvas.height = webcam.videoHeight;
+
+          // Step 2 — start sending frames to backend
+          setInterval(sendFrame, 100); // sends 10 frames per second
+        };
+      })
+      .catch(err => {
+        output.alt = "Camera access denied: " + err.message;
+      });
+
+    async function sendFrame() {
+      // Draw current webcam frame onto hidden canvas
+      ctx.drawImage(webcam, 0, 0);
+
+      // Convert canvas to image blob
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+
+        // Step 3 — send frame to backend /process endpoint
+        const formData = new FormData();
+        formData.append('file', blob, 'frame.jpg');
+
+        try {
+          const response = await fetch('/process', {
+            method: 'POST',
+            body: formData
+          });
+
+          // Step 4 — backend sends back processed frame, show it
+          const imageBlob = await response.blob();
+          const imageUrl  = URL.createObjectURL(imageBlob);
+
+          // Clean up old URL to avoid memory leak
+          if (output.src) URL.revokeObjectURL(output.src);
+          output.src = imageUrl;
+
+        } catch (err) {
+          console.error('Frame send failed:', err);
+        }
+
+      }, 'image/jpeg', 0.8);
+    }
+  </script>
+</body>
+</html>
